@@ -8,6 +8,7 @@ import { useSpeech } from "../hooks/useSpeech";
 import facialExpressions from "../constants/facialExpressions";
 import visemesMapping from "../constants/visemesMapping";
 import morphTargets from "../constants/morphTargets";
+import HolographicMaterial from "./HolographicMaterialVanilla";
 
 export function Avatar(props) {
   const { nodes, materials, scene } = useGLTF("/models/avatar.glb");
@@ -136,12 +137,16 @@ export function Avatar(props) {
   });
 
   const hologramControls = useControls("Hologram", {
-    enabled: { value: false, label: "Enable Hologram" },
-    color: { value: "#00ffff", label: "Color" },
-    opacity: { value: 0.85, min: 0, max: 1, step: 0.01, label: "Opacity" },
-    scanLineIntensity: { value: 0.2, min: 0, max: 1, step: 0.1, label: "Scan Line Intensity" },
-    fresnelIntensity: { value: 0.8, min: 0, max: 1, step: 0.1, label: "Fresnel Intensity" },
-    flickerAmount: { value: 0.02, min: 0, max: 0.1, step: 0.01, label: "Flicker Amount" },
+    enabled: { value: true, label: "Enable Hologram" },
+    hologramColor: { value: "#00d5ff", label: "Color" },
+    hologramOpacity: { value: 1.0, min: 0, max: 1, step: 0.01, label: "Opacity" },
+    fresnelAmount: { value: 0.45, min: 0, max: 1, step: 0.01, label: "Fresnel Amount" },
+    fresnelOpacity: { value: 1.0, min: 0, max: 1, step: 0.01, label: "Fresnel Opacity" },
+    scanlineSize: { value: 8.0, min: 1, max: 15, step: 0.1, label: "Scanline Size" },
+    hologramBrightness: { value: 1.0, min: 0, max: 2, step: 0.1, label: "Brightness" },
+    signalSpeed: { value: 1.0, min: 0, max: 2, step: 0.1, label: "Signal Speed" },
+    enableBlinking: { value: true, label: "Enable Blinking" },
+    blinkFresnelOnly: { value: true, label: "Blink Fresnel Only" },
   });
 
   useControls("FacialExpressions", {
@@ -179,10 +184,10 @@ export function Avatar(props) {
   // MorphTarget controls hidden - only available in setup mode via console if needed
   // useControls("MorphTarget", () => ...)
 
-  // Store hologram materials for uniform updates
+  // Store hologram materials for updating
   const hologramMaterialsRef = useRef(new Map());
 
-  // Hologram shader setup - replace materials with ShaderMaterial (working approach)
+  // Hologram shader setup - use HolographicMaterial
   useEffect(() => {
     if (!scene) return;
 
@@ -193,100 +198,36 @@ export function Avatar(props) {
           if (!child.userData.originalMaterial) {
             child.userData.originalMaterial = child.material;
           }
-          
+
           // Create or reuse hologram material for this mesh
           if (!hologramMaterialsRef.current.has(child)) {
-            const hologramShader = {
-              uniforms: {
-                uHologramTime: { value: 0 },
-                uHologramColor: { value: new THREE.Color(hologramControls.color) },
-                uHologramOpacity: { value: hologramControls.opacity },
-                uHologramScanLineIntensity: { value: hologramControls.scanLineIntensity },
-                uHologramFresnelIntensity: { value: hologramControls.fresnelIntensity },
-                uHologramFlickerAmount: { value: hologramControls.flickerAmount },
-              },
-              vertexShader: `
-                varying vec3 vPosition;
-                varying vec3 vNormal;
-                varying vec2 vUv;
-                
-                void main() {
-                  vPosition = (modelMatrix * vec4(position, 1.0)).xyz;
-                  vNormal = normalize(normalMatrix * normal);
-                  vUv = uv;
-                  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-                }
-              `,
-              fragmentShader: `
-                uniform float uHologramTime;
-                uniform vec3 uHologramColor;
-                uniform float uHologramOpacity;
-                uniform float uHologramScanLineIntensity;
-                uniform float uHologramFresnelIntensity;
-                uniform float uHologramFlickerAmount;
-                
-                varying vec3 vPosition;
-                varying vec3 vNormal;
-                varying vec2 vUv;
-                
-                // Simple noise function for randomness
-                float hologramRandom(float x) {
-                  return fract(sin(x * 12.9898) * 43758.5453);
-                }
-                
-                float hologramNoise(float x) {
-                  float i = floor(x);
-                  float f = fract(x);
-                  return mix(hologramRandom(i), hologramRandom(i + 1.0), smoothstep(0.0, 1.0, f));
-                }
-                
-                void main() {
-                  // Add stutter/randomness to time
-                  float stutterTime = uHologramTime + hologramNoise(uHologramTime * 0.5) * 0.3;
-                  float stutterTime2 = uHologramTime + hologramNoise(uHologramTime * 0.3 + 100.0) * 0.5;
-                  
-                  // Scan lines with stutter and randomness
-                  float scanSpeed = 10.0 + hologramNoise(uHologramTime * 0.2) * 5.0;
-                  float scanOffset = hologramNoise(vUv.y * 50.0 + stutterTime * 0.1) * 0.1;
-                  float scanLine = sin(vUv.y * 800.0 + stutterTime * scanSpeed + scanOffset) * 0.5 + 0.5;
-                  scanLine = pow(scanLine, 20.0);
-                  
-                  // Add random dropouts to scanlines
-                  float scanDropout = step(0.95, hologramNoise(stutterTime * 2.0 + vUv.y * 10.0));
-                  scanLine *= (1.0 - scanDropout * 0.3);
-                  
-                  // Fresnel
-                  vec3 viewDir = normalize(cameraPosition - vPosition);
-                  float fresnel = pow(1.0 - max(dot(viewDir, vNormal), 0.0), 2.0);
-                  
-                  // Flicker with stutter and randomness
-                  float flickerBase = sin(stutterTime2 * 30.0) * uHologramFlickerAmount + (1.0 - uHologramFlickerAmount);
-                  float flickerStutter = hologramNoise(stutterTime2 * 5.0) * uHologramFlickerAmount * 0.5;
-                  float flicker = flickerBase + flickerStutter;
-                  
-                  // Random glitches
-                  float glitch = step(0.98, hologramNoise(stutterTime * 0.5));
-                  flicker *= (1.0 - glitch * 0.2);
-                  
-                  // Combine hologram effect
-                  float scanFresnelMix = scanLine * uHologramScanLineIntensity + fresnel * uHologramFresnelIntensity;
-                  vec3 hologramColor = uHologramColor * scanFresnelMix * flicker;
-                  float hologramAlpha = uHologramOpacity * (0.6 + fresnel * 0.4);
-                  
-                  gl_FragColor = vec4(hologramColor, hologramAlpha);
-                }
-              `,
-            };
-            
-            const hologramMaterial = new THREE.ShaderMaterial({
-              ...hologramShader,
-              transparent: true,
-              side: THREE.DoubleSide,
+            const hologramMaterial = new HolographicMaterial({
+              hologramColor: hologramControls.hologramColor,
+              hologramOpacity: hologramControls.hologramOpacity,
+              fresnelAmount: hologramControls.fresnelAmount,
+              fresnelOpacity: hologramControls.fresnelOpacity,
+              scanlineSize: hologramControls.scanlineSize,
+              hologramBrightness: hologramControls.hologramBrightness,
+              signalSpeed: hologramControls.signalSpeed,
+              enableBlinking: hologramControls.enableBlinking,
+              blinkFresnelOnly: hologramControls.blinkFresnelOnly,
             });
-            
+
             hologramMaterialsRef.current.set(child, hologramMaterial);
+          } else {
+            // Update existing material uniforms
+            const existingMaterial = hologramMaterialsRef.current.get(child);
+            existingMaterial.uniforms.hologramColor.value.set(hologramControls.hologramColor);
+            existingMaterial.uniforms.hologramOpacity.value = hologramControls.hologramOpacity;
+            existingMaterial.uniforms.fresnelAmount.value = hologramControls.fresnelAmount;
+            existingMaterial.uniforms.fresnelOpacity.value = hologramControls.fresnelOpacity;
+            existingMaterial.uniforms.scanlineSize.value = hologramControls.scanlineSize;
+            existingMaterial.uniforms.hologramBrightness.value = hologramControls.hologramBrightness;
+            existingMaterial.uniforms.signalSpeed.value = hologramControls.signalSpeed;
+            existingMaterial.uniforms.enableBlinking.value = hologramControls.enableBlinking;
+            existingMaterial.uniforms.blinkFresnelOnly.value = hologramControls.blinkFresnelOnly;
           }
-          
+
           // Apply hologram material
           child.material = hologramMaterialsRef.current.get(child);
         } else {
@@ -297,20 +238,12 @@ export function Avatar(props) {
         }
       }
     });
-  }, [scene, hologramControls.enabled, hologramControls.color, hologramControls.opacity, hologramControls.scanLineIntensity, hologramControls.fresnelIntensity, hologramControls.flickerAmount]);
-
-  // Update shader uniforms
+  }, [scene, hologramControls.enabled, hologramControls.hologramColor, hologramControls.hologramOpacity, hologramControls.fresnelAmount, hologramControls.fresnelOpacity, hologramControls.scanlineSize, hologramControls.hologramBrightness, hologramControls.signalSpeed, hologramControls.enableBlinking, hologramControls.blinkFresnelOnly]);  // Update shader uniforms
   useFrame((state) => {
     if (hologramControls.enabled) {
-      const time = state.clock.getElapsedTime();
       hologramMaterialsRef.current.forEach((material) => {
-        if (material && material.uniforms) {
-          material.uniforms.uHologramTime.value = time;
-          material.uniforms.uHologramColor.value.set(hologramControls.color);
-          material.uniforms.uHologramOpacity.value = hologramControls.opacity;
-          material.uniforms.uHologramScanLineIntensity.value = hologramControls.scanLineIntensity;
-          material.uniforms.uHologramFresnelIntensity.value = hologramControls.fresnelIntensity;
-          material.uniforms.uHologramFlickerAmount.value = hologramControls.flickerAmount;
+        if (material && material.update) {
+          material.update();
         }
       });
     }

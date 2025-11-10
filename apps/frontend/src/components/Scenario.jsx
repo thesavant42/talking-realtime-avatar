@@ -9,7 +9,7 @@ export const Scenario = () => {
   const cameraControls = useRef();
   const { scene: threeScene } = useThree();
   const { darkBackground, backgroundColor } = useControls("Background", {
-    darkBackground: { value: false, label: "Dark Background (for Hologram)" },
+    darkBackground: { value: true, label: "Dark Background (for Hologram)" },
     backgroundColor: { value: "#000000", label: "Background Color" },
   });
 
