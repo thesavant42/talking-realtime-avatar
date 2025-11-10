@@ -1,0 +1,333 @@
+{
+    "components": {
+        "schemas": {
+            "CreateSpeechRequest": {
+                "properties": {
+                    "input": {
+                        "description": "The text to generate audio for",
+                        "maxLength": 4096,
+                        "title": "Input",
+                        "type": "string"
+                    },
+                    "instructions": {
+                        "anyOf": [
+                            {
+                                "maxLength": 4096,
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Control the voice of your generated audio with additional instructions",
+                        "title": "Instructions"
+                    },
+                    "model": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ModelEnum"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "description": "One of the available TTS models",
+                        "title": "Model"
+                    },
+                    "params": {
+                        "anyOf": [
+                            {
+                                "type": "object"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Additional parameters for the TTS engine",
+                        "title": "Params"
+                    },
+                    "response_format": {
+                        "$ref": "#/components/schemas/ResponseFormatEnum",
+                        "default": "wav",
+                        "description": "The format to audio in"
+                    },
+                    "speed": {
+                        "default": 1,
+                        "description": "The speed of the generated audio",
+                        "maximum": 4,
+                        "minimum": 0.25,
+                        "title": "Speed",
+                        "type": "number"
+                    },
+                    "stream": {
+                        "default": true,
+                        "description": "Whether to stream the audio response",
+                        "title": "Stream",
+                        "type": "boolean"
+                    },
+                    "voice": {
+                        "description": "The voice to use when generating the audio",
+                        "title": "Voice",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "model",
+                    "input",
+                    "voice"
+                ],
+                "title": "CreateSpeechRequest",
+                "type": "object"
+            },
+            "HTTPValidationError": {
+                "properties": {
+                    "detail": {
+                        "items": {
+                            "$ref": "#/components/schemas/ValidationError"
+                        },
+                        "title": "Detail",
+                        "type": "array"
+                    }
+                },
+                "title": "HTTPValidationError",
+                "type": "object"
+            },
+            "ModelEnum": {
+                "enum": [
+                    "hexgrad/Kokoro-82M",
+                    "chatterbox",
+                    "global_preset",
+                    "styletts2",
+                    "f5-tts",
+                    "piper-tts",
+                    "vall-e-x",
+                    "parler-tts",
+                    "megatts3",
+                    "fireredtts2",
+                    "higgs_v2",
+                    "mms",
+                    "maha_tts"
+                ],
+                "title": "ModelEnum",
+                "type": "string"
+            },
+            "ResponseFormatEnum": {
+                "enum": [
+                    "mp3",
+                    "opus",
+                    "aac",
+                    "flac",
+                    "wav",
+                    "pcm"
+                ],
+                "title": "ResponseFormatEnum",
+                "type": "string"
+            },
+            "ValidationError": {
+                "properties": {
+                    "loc": {
+                        "items": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "integer"
+                                }
+                            ]
+                        },
+                        "title": "Location",
+                        "type": "array"
+                    },
+                    "msg": {
+                        "title": "Message",
+                        "type": "string"
+                    },
+                    "type": {
+                        "title": "Error Type",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "loc",
+                    "msg",
+                    "type"
+                ],
+                "title": "ValidationError",
+                "type": "object"
+            }
+        }
+    },
+    "info": {
+        "description": "A FastAPI implementation of an OpenAI-compatible Text-to-Speech endpoint",
+        "title": "OpenAI-Compatible TTS API",
+        "version": "1.0.0"
+    },
+    "openapi": "3.1.0",
+    "paths": {
+        "/": {
+            "get": {
+                "description": "API information and usage examples.",
+                "operationId": "root__get",
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        },
+                        "description": "Successful Response"
+                    }
+                },
+                "summary": "Root",
+                "tags": [
+                    "info"
+                ]
+            }
+        },
+        "/v1/audio/models": {
+            "get": {
+                "description": "Get available TTS models.",
+                "operationId": "get_models_v1_audio_models_get",
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        },
+                        "description": "Successful Response"
+                    }
+                },
+                "summary": "Get Models",
+                "tags": [
+                    "models",
+                    "voices"
+                ]
+            }
+        },
+        "/v1/audio/speech": {
+            "post": {
+                "description": "Generate speech from text using various TTS models.",
+                "operationId": "create_speech_v1_audio_speech_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateSpeechRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        },
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        },
+                        "description": "Validation Error"
+                    }
+                },
+                "summary": "Create Speech",
+                "tags": [
+                    "audio"
+                ]
+            }
+        },
+        "/v1/audio/transcriptions": {
+            "post": {
+                "description": "Transcribe audio to text using Whisper.",
+                "operationId": "transcribe_audio_endpoint_v1_audio_transcriptions_post",
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        },
+                        "description": "Successful Response"
+                    }
+                },
+                "summary": "Transcribe Audio Endpoint",
+                "tags": [
+                    "audio"
+                ]
+            }
+        },
+        "/v1/audio/voices": {
+            "get": {
+                "description": "Get all available voices from all models.",
+                "operationId": "get_all_voices_v1_audio_voices_get",
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        },
+                        "description": "Successful Response"
+                    }
+                },
+                "summary": "Get All Voices",
+                "tags": [
+                    "models",
+                    "voices"
+                ]
+            }
+        },
+        "/v1/audio/voices/{model}": {
+            "get": {
+                "description": "Get available voices for a specific model.",
+                "operationId": "get_voices_v1_audio_voices__model__get",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "model",
+                        "required": true,
+                        "schema": {
+                            "title": "Model",
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        },
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        },
+                        "description": "Validation Error"
+                    }
+                },
+                "summary": "Get Voices",
+                "tags": [
+                    "models",
+                    "voices"
+                ]
+            }
+        }
+    }
+}

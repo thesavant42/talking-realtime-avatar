@@ -1,0 +1,30 @@
+{
+  "model": "chatterbox",
+  "input": "Here's one:\n\nWhat do you call a fake noodle?\n\n(wait for it...)\n\nAn impasta!\n\nI hope that made you smile! Do you want to hear another one?",
+  "voice": "voices/chatterbox/11.wav",
+  "extra_body": {
+    "params": {
+      "exaggeration": 0.5,
+      "cfg_weight": 0.5,
+      "temperature": 1.4,
+      "speed": 1.0,
+      "device": "cuda",
+      "dtype": "float32",
+      "seed": -1,
+      "chunked": true,
+      "use_compilation": true,
+      "max_new_tokens": 1000,
+      "max_cache_len": 1500,
+      "desired_length": 100,
+      "max_length": 300,
+      "halve_first_chunk": true,
+      "cpu_offload": false,
+      "cache_voice": false,
+      "tokens_per_slice": null,
+      "remove_milliseconds": null,
+      "remove_milliseconds_start": null,
+      "chunk_overlap_method": "undefined"
+    }
+  }
+}
+
